@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 public class BaseModel {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    private long Id;
+    private Long Id;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
