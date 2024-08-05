@@ -6,6 +6,8 @@ import org.example.ecommerceproductservice.Exception.ProductNotFoundException;
 import org.example.ecommerceproductservice.Mapper.Mapper;
 import org.example.ecommerceproductservice.Models.Product;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.AutoConfigureOrder;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.Nullable;
@@ -21,13 +23,15 @@ import java.util.List;
 public class FakeStoreClient {
 
     private RestTemplate restTemplate;
+    private RedisTemplate<String, Object> redisTemplate;
 
     @Autowired
-    public FakeStoreClient(RestTemplate restTemplate) {
+    public FakeStoreClient(RestTemplate restTemplate, RedisTemplate redisTemplate) {
         this.restTemplate = restTemplate;
+        this.redisTemplate = redisTemplate;
     }
 
-    public <T> ResponseEntity<T> requestForEntity(HttpMethod httpMethod,String url, @Nullable Object request, Class<T> responseType, Object... uriVariables) throws RestClientException {
+    public <T> ResponseEntity<T> requestForEntity(HttpMethod httpMethod, String url, @Nullable Object request, Class<T> responseType, Object... uriVariables) throws RestClientException {
         RequestCallback requestCallback = restTemplate.httpEntityCallback(request, responseType);
         ResponseExtractor<ResponseEntity<T>> responseExtractor = restTemplate.responseEntityExtractor(responseType);
         return (restTemplate.execute(url, httpMethod, requestCallback, responseExtractor, uriVariables));
@@ -35,13 +39,43 @@ public class FakeStoreClient {
 
     public FakeStoreProductDTO getSingleProduct(Long productId)
       {
-          FakeStoreProductDTO forObject = restTemplate.getForObject("https://fakestoreapi.com/products/" + productId, FakeStoreProductDTO.class);
-          if(forObject == null)
+//          FakeStoreProductDTO forObject = restTemplate.getForObject("https://fakestoreapi.com/products/" + productId, FakeStoreProductDTO.class);
+//          if(forObject == null)
+//          {
+//              throw new ProductNotFoundException("product with id" + productId + "doesn't not exists");
+//          }
+//
+//          return forObject;
+
+
+            //Try to fetch product from redis.
+          Product product = (Product) redisTemplate.opsForHash().get("PRODUCT", "PRODUCT_" + productId);
+
+          if(product != null)
           {
-              throw new ProductNotFoundException("product with id" + productId + "doesn't not exists");
+              //cache HIT
+              return Mapper.convertProductToFakeStoreProductDTO(product);
           }
 
-          return forObject;
+          //Call FakeStore to fetch the Product with given id. => HTTP Call.
+
+          FakeStoreProductDTO fakeStoreProductDto = restTemplate.getForObject(
+                  "https://fakestoreapi.com/products/" + productId,
+                  FakeStoreProductDTO.class
+          );
+
+          if (fakeStoreProductDto == null) {
+              throw new ProductNotFoundException("Product with id " + productId + " doesn't exist");
+          }
+
+          //Convert FakeStoreProductDto into Product.
+          //Cache MISS
+          Product product1 = Mapper.convertFakeStoreProductDTOtoProduct(fakeStoreProductDto);
+
+          //Store the product in redis.
+          redisTemplate.opsForHash().put("PRODUCTS", "PRODUCT_" + productId, product1);
+
+          return fakeStoreProductDto;
       }
 
 

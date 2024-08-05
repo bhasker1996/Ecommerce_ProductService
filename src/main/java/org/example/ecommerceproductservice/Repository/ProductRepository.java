@@ -2,6 +2,8 @@ package org.example.ecommerceproductservice.Repository;
 
 import org.example.ecommerceproductservice.Models.Product;
 import org.example.ecommerceproductservice.Repository.Projections.ProductWithIdAndTitle;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -12,7 +14,9 @@ import java.util.Optional;
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
-     List<Product> findByPriceGreaterThan(Double price);
+    List<Product> findByPriceGreaterThan(Double price);
+
+    Page<Product> findAll(Pageable pageable);
 
     List<Product> findProductByTitleLike(String word);
     List<Product> findByTitleIgnoreCase(String word);

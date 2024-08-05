@@ -30,6 +30,7 @@ public class Mapper {
         product.setImageURL(requestDTO.getImageURL());
         product.setDescription(requestDTO.getDescription());
         Category category = new Category();
+        category.setId(requestDTO.getCategory().getId());
         category.setName(requestDTO.getCategory().getName());
        category.setDescription(requestDTO.getCategory().getDescription());
         product.setCategory(category);
